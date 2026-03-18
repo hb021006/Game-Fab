@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>국민대 - 전공 선택</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #1a1a2e; font-family: 'Malgun Gothic', sans-serif; touch-action: none; }
+        
+        /* 인트로 및 선택 화면 */
+        #start-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a2e; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 200; color: white; text-align: center; }
+        #major-selection { display: none; flex-direction: row; gap: 30px; margin-top: 30px; }
+        
+        .btn-main { padding: 20px 40px; font-size: 24px; background: #3498db; color: white; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; transition: 0.3s; box-shadow: 0 0 20px rgba(52, 152, 219, 0.5); }
+        .btn-major { padding: 40px 60px; font-size: 28px; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; transition: 0.3s; color: white; min-width: 180px; }
+        .liberal { background: #e67e22; box-shadow: 0 0 15px rgba(230, 126, 34, 0.5); }
+        .science { background: #9b59b6; box-shadow: 0 0 15px rgba(155, 89, 182, 0.5); }
+        .btn-major:hover { transform: translateY(-10px); filter: brightness(1.2); }
+
+        #ui { position: absolute; top: 0; width: 100%; display: flex; justify-content: space-around; font-size: 20px; font-weight: bold; pointer-events: none; z-index: 10; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); padding: 20px 0; background: rgba(0, 0, 0, 0.6); border-bottom: 4px solid #e74c3c; visibility: hidden; }
+        #shield-alert { position: absolute; bottom: 25%; width: 100%; text-align: center; font-size: 28px; color: #00d2ff; font-weight: bold; display: none; z-index: 15; text-shadow: 0 0 15px #fff; animation: blink 0.5s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        #game-container { position: relative; margin: 0 auto; width: 500px; height: 100vh; background: #ffffff; box-shadow: 0 0 100px rgba(0,0,0,0.5); overflow: hidden; }
+        #over { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 30px; border-radius: 25px; text-align: center; display: none; box-shadow: 0 20px 60px rgba(0,0,0,0.8); z-index: 20; border: 10px solid #2c3e50; min-width: 420px; max-height: 90vh; overflow-y: auto; }
+        
+        button { padding: 12px 20px; font-size: 16px; margin: 5px; cursor: pointer; border-radius: 12px; border: none; font-weight: bold; transition: 0.2s; }
+        button:disabled { background: #ccc !important; cursor: not-allowed; opacity: 0.6; }
+        .btn-next { background: #27ae60; color: white; }
+        .btn-season { background: #f39c12; color: white; }
+        .btn-pause { background: #7f8c8d; color: white; }
+        .btn-retry { background: #e74c3c; color: white; }
+        
+        .stage-banner { position: absolute; top: 40%; width: 100%; text-align: center; font-size: 60px; font-weight: 900; color: #e74c3c; opacity: 0; transition: opacity 0.5s; z-index: 5; pointer-events: none; }
+        #ending { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: white; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100; padding: 20px; box-sizing: border-box; }
+        .summary-table { width: 100%; margin: 20px 0; border-collapse: collapse; color: white; }
+        .summary-table td, .summary-table th { border: 1px solid #444; padding: 10px; text-align: center; }
+        .grade-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; margin: 2px; color: black; font-weight: bold; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div id="start-screen">
+        <div id="main-intro">
+            <h1 style="font-size: 60px; margin-bottom: 20px; color: #3498db;">🏫 국민대</h1>
+            <p style="font-size: 22px; color: #ffffff; margin-bottom: 45px; font-weight: bold;">당신의 합격을 진심으로 축하드립니다!</p>
+            <button class="btn-main" onclick="showMajorSelect()">국민대 입학하기</button>
+        </div>
+        
+        <div id="major-selection">
+            <button class="btn-major liberal" onclick="setMajor('liberal')">문과</button>
+            <button class="btn-major science" onclick="setMajor('science')">이과</button>
+        </div>
+    </div>
+
+    <div id="ui">
+        <div><span id="major-tag" style="background: white; color: black; padding: 2px 5px; border-radius: 4px; font-size: 14px; margin-right: 10px;"></span><span id="year-text" style="color:#ff7675">1학년</span></div>
+        <div>GPA: <span id="s" style="color: #f1c40f;">0.00</span></div>
+        <div>이수: <span id="cnt" style="color: #f1c40f;">0</span>/30</div>
+        <div>💰: <span id="money" style="color: #2ecc71;">0</span>원</div>
+        <div>시간: <span id="t" style="color: #f1c40f;">20</span>s</div>
+    </div>
+    
+    <div id="game-container">
+        <div id="shield-alert">🛡️ 학점포기권 발동! (F 무력화)</div>
+        <div id="stage-msg" class="stage-banner"></div>
+        <div id="over">
+            <h2 id="res-title" style="font-size: 28px; margin-bottom: 10px;">학기 성적표</h2>
+            <p style="font-size: 24px; font-weight: bold; margin: 5px 0;">현재 학년 GPA: <span id="fs" style="color:#c0392b;">0.00</span></p>
+            <div id="cmt" style="margin: 15px 0; font-size: 18px; font-weight:bold; padding: 10px; border-radius: 10px;"></div>
+            <div id="action-buttons">
+                <button id="next-btn" class="btn-next">다음 학년으로</button>
+                <button id="season-btn" class="btn-season">계절학기 듣기 (500원)</button>
+                <button id="leave-btn" class="btn-pause" onclick="confirmLeave()">휴학하기</button>
+                <button id="retry-btn" class="btn-retry">사회 진출하기</button>
+            </div>
+        </div>
+        <canvas id="c"></canvas>
+    </div>
+
+    <div id="ending">
+        <h1 style="color: #f1c40f; margin-bottom: 5px;">🎓 최종 성적 증명서</h1>
+        <p id="ending-major-text" style="margin-bottom: 20px;"></p>
+        <table class="summary-table" id="final-table"></table>
+        <div id="grade-stats" style="margin: 15px 0; background: #222; padding: 15px; border-radius: 10px; width: 80%;">
+            <p style="margin-top:0;">📊 취득 학점 현황</p>
+            <div id="stats-content"></div>
+        </div>
+        <h2 style="font-size: 32px;">최종 졸업 평점: <span id="total-gpa" style="color: #ff7675;">0.00</span></h2>
+        <button class="btn-retry" style="margin-top: 30px;" onclick="location.reload()">처음부터 다시하기</button>
+    </div>
+
+<script>
+    const canvas = document.getElementById('c'); const ctx = canvas.getContext('2d'); const container = document.getElementById('game-container');
+    let year = 1, score = 0, time = 20, items = [], last = 0, over = true, totalSum = 0, count = 0, money = 0;
+    let isSeason = false, isPaused = false, isInvincible = false, shieldTimer = 0, gameStarted = false;
+    let selectedMajor = 'liberal';
+    let yearlyGrades = [];
+    let totalItemsCollected = { "A+": 0, "A0": 0, "B+": 0, "B0": 0, "C+": 0, "F": 0 };
+    const player = { x: 0, y: 0, w: 70, h: 90, speed: 12 }; 
+    const prof = { x: 0, y: 110, w: 70, h: 90, d: 1 };
+    const keys = { left: false, right: false };
+    const grades = [{ l: 'A+', s: 4.5, c: '#FFD700', r: 18 }, { l: 'A0', s: 4.0, c: '#FFC107', r: 19 }, { l: 'B+', s: 3.5, c: '#8BC34A', r: 20 }, { l: 'B0', s: 3.0, c: '#03A9F4', r: 21 }, { l: 'C+', s: 2.5, c: '#9C27B0', r: 22 }];
+    const F_GRADE = { l: 'F', s: 0.0, c: '#e74c3c', r: 32 };
+
+    function resize() { canvas.width = container.clientWidth; canvas.height = container.clientHeight; player.y = canvas.height - 150; player.x = canvas.width / 2 - player.w / 2; }
+    function showMajorSelect() { document.getElementById('main-intro').style.display = 'none'; document.getElementById('major-selection').style.display = 'flex'; }
+    function setMajor(major) { selectedMajor = major; const tag = document.getElementById('major-tag'); tag.innerText = major === 'liberal' ? '문과' : '이과'; tag.style.background = major === 'liberal' ? '#e67e22' : '#9b59b6'; tag.style.color = 'white'; startGame(); }
+    function startGame() { document.getElementById('start-screen').style.display = 'none'; document.getElementById('ui').style.visibility = 'visible'; over = false; gameStarted = true; last = performance.now(); showStageBanner(year + "학년 시작"); requestAnimationFrame(update); }
+    function drawPlayer(x, y, protected) { ctx.save(); if(protected) { ctx.shadowBlur = 30; ctx.shadowColor = "#00d2ff"; ctx.strokeStyle = "#00d2ff"; ctx.lineWidth = 6; ctx.strokeRect(x, y, player.w, player.h); } ctx.fillStyle = "#3498db"; ctx.fillRect(x + 10, y + 30, 50, 50); ctx.fillStyle = "#ffe0bd"; ctx.beginPath(); ctx.arc(x + 35, y + 15, 18, 0, Math.PI*2); ctx.fill(); ctx.restore(); }
+    function drawProf(x, y) { ctx.fillStyle = "#2c3e50"; ctx.fillRect(x + 10, y + 30, 50, 50); ctx.fillStyle = "#ffe0bd"; ctx.beginPath(); ctx.arc(x + 35, y + 15, 18, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "black"; ctx.fillRect(x + 5, y - 8, 60, 15); }
+    function spawnItem() {
+        let diffFactor = selectedMajor === 'liberal' ? 0.8 : 1.2;
+        let chance = isSeason ? 0.4 : (0.15 + year * 0.03) * diffFactor;
+        if (Math.random() < chance) {
+            let t;
+            if (year === 4 && Math.random() < 0.05) { t = { l: '🛡️', s: 'SHIELD', c: '#00d2ff', r: 25 }; } 
+            else { let fProbBase = selectedMajor === 'liberal' ? 0.03 : 0.07; let fProb = isSeason ? 0 : (fProbBase + year * 0.02); t = (Math.random() < fProb) ? { ...F_GRADE } : { ...grades[Math.floor(Math.random() * grades.length)] }; }
+            let speedMult = selectedMajor === 'liberal' ? 0.85 : 1.1;
+            items.push({ x: prof.x + 35, y: 190, ...t, spd: ((isSeason ? 7 : 4 + year * 1.2) + Math.random() * 2) * speedMult });
+        }
+    }
+    function update(now) {
+        if (!gameStarted) return;
+        if (!last) last = now; const dt = now - last; last = now;
+        if (!over) {
+            if (keys.left) player.x -= player.speed; if (keys.right) player.x += player.speed;
+            player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+            let profSpeed = selectedMajor === 'liberal' ? 0.9 : 1.1;
+            prof.x += prof.d * (isSeason ? 10 : 4 + year * 2.2) * profSpeed; if (prof.x < 0 || prof.x > canvas.width - prof.w) prof.d *= -1;
+            spawnItem();
+            for (let i = items.length - 1; i >= 0; i--) {
+                let it = items[i]; it.y += it.spd;
+                if (it.y + it.r > player.y && it.y < player.y + player.h && it.x > player.x - 10 && it.x < player.x + player.w + 10) {
+                    if (it.s === 'SHIELD') { isInvincible = true; shieldTimer = 3000; document.getElementById('shield-alert').style.display = 'block'; } 
+                    else { if (!(it.l === 'F' && isInvincible)) { count++; totalSum += it.s; score = totalSum / count; if(totalItemsCollected[it.l] !== undefined) totalItemsCollected[it.l]++; } }
+                    items.splice(i, 1); continue;
+                }
+                if (it.y > canvas.height) items.splice(i, 1);
+            }
+            if (isInvincible) { shieldTimer -= dt; if (shieldTimer <= 0) { isInvincible = false; document.getElementById('shield-alert').style.display = 'none'; } }
+            time -= dt / 1000; 
+            document.getElementById('s').innerText = score.toFixed(2); document.getElementById('cnt').innerText = count;
+            document.getElementById('t').innerText = Math.max(0, Math.ceil(time)); document.getElementById('money').innerText = money;
+            if (time <= 0) endGame();
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height); drawProf(prof.x, prof.y); drawPlayer(player.x, player.y, isInvincible);
+        items.forEach(it => { ctx.beginPath(); ctx.arc(it.x, it.y, it.r, 0, Math.PI * 2); ctx.fillStyle = it.c; ctx.fill(); if(it.s === 'SHIELD') { ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.stroke(); } ctx.fillStyle = it.l === 'F' ? 'white' : 'black'; ctx.font = `bold ${it.r * 0.7}px Arial`; ctx.textAlign = 'center'; ctx.fillText(it.l, it.x, it.y + it.r/3); });
+        requestAnimationFrame(update);
+    }
+    function endGame() {
+        over = true; isPaused = false;
+        const panel = document.getElementById('over'); const cmt = document.getElementById('cmt');
+        panel.style.display = 'block'; document.getElementById('fs').innerText = score.toFixed(2);
+        let rewardMsg = ""; if (score >= 4.0 && !isSeason) { money += 500; rewardMsg = "<br><span style='color:#27ae60'>💰 성적 우수 장학금 500원 획득!</span>"; }
+        document.getElementById('money').innerText = money; document.getElementById('season-btn').disabled = (money < 500);
+        if (count < 30) { cmt.innerHTML = "❌ <span style='color:red'>학점 부족 (제적 위기)</span>" + rewardMsg; cmt.style.background = "#ffebee"; document.getElementById('next-btn').style.display = 'none'; } 
+        else { cmt.innerHTML = "✅ 학기 성공!" + rewardMsg; cmt.style.background = "#e8f5e9"; document.getElementById('next-btn').style.display = (year === 4) ? 'none' : 'inline-block'; }
+        const rBtn = document.getElementById('retry-btn');
+        if (year === 4 && count >= 30) { rBtn.style.display = 'inline-block'; rBtn.innerText = "사회 진출하기"; rBtn.onclick = () => { saveYearRecord(); showFinalEnding(); }; } else { rBtn.style.display = 'none'; }
+        document.getElementById('leave-btn').innerText = (year === 4 && count >= 30) ? "졸업 유예하기" : "휴학하기";
+    }
+    function saveYearRecord() { const existingIdx = yearlyGrades.findIndex(g => g.year === year); if (existingIdx > -1) yearlyGrades[existingIdx].gpa = score; else yearlyGrades.push({ year: year, gpa: score }); }
+    function showFinalEnding() {
+        document.getElementById('over').style.display = 'none'; document.getElementById('ending').style.display = 'flex';
+        document.getElementById('ending-major-text').innerText = `항배님의 ${selectedMajor === 'liberal' ? '문과' : '이과'} 4년간의 기록입니다.`;
+        const table = document.getElementById('final-table'); table.innerHTML = "<tr><th>학년</th><th>평점</th><th>상태</th></tr>";
+        let totalGpaSum = 0;
+        yearlyGrades.forEach(g => { const row = table.insertRow(); row.insertCell(0).innerText = g.year + "학년"; row.insertCell(1).innerText = g.gpa.toFixed(2); row.insertCell(2).innerText = g.gpa >= 4.0 ? "장학생" : (g.gpa >= 2.5 ? "이수" : "경고"); totalGpaSum += g.gpa; });
+        const stats = document.getElementById('stats-content'); stats.innerHTML = "";
+        const colors = {"A+": "#FFD700", "A0": "#FFC107", "B+": "#8BC34A", "B0": "#03A9F4", "C+": "#9C27B0", "F": "#e74c3c"};
+        for (let grade in totalItemsCollected) stats.innerHTML += `<span class="grade-tag" style="background:${colors[grade]}">${grade}: ${totalItemsCollected[grade]}개</span> `;
+        document.getElementById('total-gpa').innerText = (totalGpaSum / yearlyGrades.length).toFixed(2);
+    }
+    function confirmLeave() { over = true; isPaused = true; const cmt = document.getElementById('cmt'); cmt.innerHTML = (year === 4) ? "🎓 <span style='color:#2980b9'>졸업 유예 중...</span>" : "💤 <span style='color:#7f8c8d'>휴학 중...</span>"; cmt.style.background = "#f5f5f5"; document.getElementById('next-btn').innerText = "복학하기"; document.getElementById('next-btn').style.display = 'inline-block'; document.getElementById('season-btn').style.display = 'none'; document.getElementById('leave-btn').style.display = 'none'; document.getElementById('retry-btn').style.display = 'none'; }
+    document.getElementById('season-btn').onclick = () => { if(money < 500) return; money -= 500; isSeason = true; isPaused = false; time = 12; items = []; over = false; document.getElementById('over').style.display = 'none'; showStageBanner("☀️ 계절학기 개강!"); };
+    document.getElementById('next-btn').onclick = () => { if (!isPaused) { saveYearRecord(); year++; count = 0; totalSum = 0; score = 0; time = 20; items = []; isSeason = false; document.getElementById('year-text').innerText = year + '학년'; } over = false; isPaused = false; document.getElementById('over').style.display = 'none'; document.getElementById('next-btn').innerText = "다음 학년으로"; showStageBanner(year + "학년 시작"); };
+    function showStageBanner(msg) { const banner = document.getElementById('stage-msg'); banner.innerText = msg; banner.style.opacity = 1; setTimeout(() => banner.style.opacity = 0, 1500); }
+    window.addEventListener('keydown', e => { if (e.key.includes('Left')) keys.left = true; if (e.key.includes('Right')) keys.right = true; });
+    window.addEventListener('keyup', e => { if (e.key.includes('Left')) keys.left = false; if (e.key.includes('Right')) keys.right = false; });
+    window.onload = resize;
+</script>
+</body>
+</html>
